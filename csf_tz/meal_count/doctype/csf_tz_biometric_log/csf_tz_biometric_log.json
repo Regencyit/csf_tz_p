@@ -1,0 +1,139 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2023-08-07 00:01:12.585883",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "punch",
+  "user_id",
+  "uid",
+  "status",
+  "column_break_qncpm",
+  "timestamp",
+  "device_id",
+  "device_ip",
+  "punch_direction",
+  "section_break_n6cxx",
+  "biometric_user",
+  "biometric_user_name",
+  "biometric",
+  "column_break_jdjj5",
+  "meal_type",
+  "site_name",
+  "supervisor"
+ ],
+ "fields": [
+  {
+   "fieldname": "punch",
+   "fieldtype": "Data",
+   "label": "Punch"
+  },
+  {
+   "fieldname": "user_id",
+   "fieldtype": "Data",
+   "label": "User ID"
+  },
+  {
+   "fieldname": "uid",
+   "fieldtype": "Data",
+   "label": "UID"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Data",
+   "label": "Status"
+  },
+  {
+   "fieldname": "column_break_qncpm",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "timestamp",
+   "fieldtype": "Datetime",
+   "label": "Timestamp"
+  },
+  {
+   "fieldname": "device_id",
+   "fieldtype": "Data",
+   "label": "Device ID"
+  },
+  {
+   "fieldname": "device_ip",
+   "fieldtype": "Data",
+   "label": "Device IP"
+  },
+  {
+   "fieldname": "punch_direction",
+   "fieldtype": "Data",
+   "label": "Punch Direction"
+  },
+  {
+   "fieldname": "section_break_n6cxx",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "biometric_user",
+   "fieldtype": "Link",
+   "label": "biometric_user",
+   "options": "CSF TZ Biometric User"
+  },
+  {
+   "fieldname": "biometric_user_name",
+   "fieldtype": "Data",
+   "label": "Biometric User Name"
+  },
+  {
+   "fieldname": "biometric",
+   "fieldtype": "Data",
+   "label": "Biometric "
+  },
+  {
+   "fieldname": "column_break_jdjj5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "meal_type",
+   "fieldtype": "Link",
+   "label": "Meal Type",
+   "options": "CSF TZ Meal Type"
+  },
+  {
+   "fieldname": "site_name",
+   "fieldtype": "Data",
+   "label": "Site Name"
+  },
+  {
+   "fieldname": "supervisor",
+   "fieldtype": "Data",
+   "label": "Supervisor"
+  }
+ ],
+ "in_create": 1,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2023-08-10 10:54:27.444383",
+ "modified_by": "Administrator",
+ "module": "Meal Count",
+ "name": "CSF TZ Biometric Log",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

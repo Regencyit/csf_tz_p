@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2023-08-16 21:36:15.580909",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2023-08-16 21:36:34.251911",
+ "modified_by": "Administrator",
+ "module": "CSF TZ",
+ "name": "scan-qrcode",
+ "owner": "Administrator",
+ "page_name": "scan-qrcode",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Scan QRCode"
+}
