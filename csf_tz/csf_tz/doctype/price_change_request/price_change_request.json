@@ -16,7 +16,6 @@
   "requested_by",
   "column_break_6",
   "approved_by",
-  "amended_from",
   "amended_from"
  ],
  "fields": [
@@ -76,24 +75,16 @@
    "options": "Price Change Request",
    "print_hide": 1,
    "read_only": 1
-  },
-  {
-   "fieldname": "amended_from",
-   "fieldtype": "Link",
-   "label": "Amended From",
-   "no_copy": 1,
-   "options": "Price Change Request",
-   "print_hide": 1,
-   "read_only": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "is_submittable": 1,
  "links": [],
- "modified": "2022-11-09 14:26:55.068562",
+ "modified": "2023-11-20 09:13:36.781225",
  "modified_by": "Administrator",
  "module": "CSF TZ",
  "name": "Price Change Request",
+ "naming_rule": "Expression (old style)",
  "owner": "Administrator",
  "permissions": [
   {
@@ -111,6 +102,7 @@
  ],
  "sort_field": "modified",
  "sort_order": "DESC",
+ "states": [],
  "track_changes": 1,
  "track_seen": 1,
  "track_views": 1

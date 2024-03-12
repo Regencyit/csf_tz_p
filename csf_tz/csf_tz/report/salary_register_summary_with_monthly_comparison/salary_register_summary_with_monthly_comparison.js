@@ -62,6 +62,23 @@ frappe.query_reports["Salary Register Summary with Monthly Comparison"] = {
 			}
 		},
 		{
+			"fieldname": "cost_center",
+			"label": __("Cost Center"),
+			"fieldtype": "Link",
+			"options": "Cost Center",
+			"default": "",
+			"width": "100px",
+			"get_query": function () {
+				var company = frappe.query_report.get_filter_value('company');
+				return {
+					"doctype": "Cost Center",
+					"filters": {
+						"company": company,
+					}
+				};
+			}
+		},
+		{
 			"fieldname": "docstatus",
 			"label": __("Document Status"),
 			"fieldtype": "Select",

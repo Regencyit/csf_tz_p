@@ -221,6 +221,7 @@ def make_payment_entry(method="callback", **kwargs):
                 )
                 payment_entry.update(
                     {
+                        "posting_date": nmb_doc.timestamp,
                         "reference_no": nmb_doc.reference,
                         "reference_date": nmb_doc.timestamp,
                         "remarks": "Payment Entry against {0} {1} via NMB Bank Payment {2}".format(

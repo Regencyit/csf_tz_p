@@ -10,6 +10,7 @@ import requests
 from requests.exceptions import Timeout
 from bs4 import BeautifulSoup
 from csf_tz.custom_api import print_out
+import re
 
 
 class VehicleFineRecord(Document):
@@ -18,105 +19,113 @@ class VehicleFineRecord(Document):
 
 def check_fine_all_vehicles():
     plate_list = frappe.get_all("Vehicle")
+    all_fine_list = []
     for vehicle in plate_list:
-        get_fine(vehicle["name"])
-        reference_list = frappe.get_all(
-            "Vehicle Fine Record", filters={"status": ["!=", "PAID"]})
+        fine_list = get_fine(number_plate=vehicle["name"])
+        if fine_list and len(fine_list) > 0:
+            all_fine_list.extend(fine_list)
+    reference_list = frappe.get_all(
+        "Vehicle Fine Record",
+        filters={"status": ["!=", "PAID"], "reference": ["not in", all_fine_list]},
+    )
     for reference in reference_list:
-        update_fine(reference["name"])
+        get_fine(reference=reference["name"])
 
 
-def get_fine(number_plate=None):
-    field_list = ["reference", "issued_date", "officer", "vehicle", "licence",
-                  "location", "offence", "charge", "penalty", "total", "status", "qr_code"]
-    formSig = "plcwb4um7FCh8BxsRRTBZ%2FXzw84N5SUnMv6ctKWPaiM%3D"
+def get_fine(number_plate=None, reference=None):
+    if not number_plate and not reference:
+        print_out(
+            _("Please provide either number plate or reference"),
+            alert=True,
+            add_traceback=True,
+            to_error_log=True,
+        )
+        return
+    # check if the number plate is less than 7 characters
+    if number_plate and len(number_plate) < 7:
+        print_out(
+            f"Please provide a valid number plate for {number_plate}",
+            alert=True,
+            add_traceback=True,
+            to_error_log=True,
+        )
+        return
+    fine_list = []
+    token = ""
     url = "https://tms.tpf.go.tz/"
 
+    session = requests.Session()
     try:
-        response = requests.post(url=url, timeout=5)
+        response = session.get(url=url, timeout=30)
     except Timeout:
         frappe.msgprint(_("Error"))
+        print("Timeout")
     else:
+        print(response.status_code)
         if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            formSig = soup.find(attrs={"type": "hidden"})['value']
+            soup = BeautifulSoup(response.text, "html.parser")
+            # Find the script tag that contains the AJAX call
+            script_tag = soup.find(
+                "script", string=re.compile(r"\$\.ajax\({.*_token.*}\);", re.DOTALL)
+            )
+            token = ""
+            if script_tag:
+                # Extract the value of _token using a regular expression
+                match = re.search(r"_token\s*:\s*'(.*)'", script_tag.string)
+                if match:
+                    token = match.group(1)
+                    print(token or "No token")
+                else:
+                    print("CSRF token not found in the script.")
+            if not token:
+                print_out(
+                    "CSRF token not found in the script.",
+                    alert=True,
+                    add_traceback=True,
+                    to_error_log=True,
+                )
+                return
+
             payload = {
-                'service': 'VEHICLE',
-                'vehicle': number_plate,
-                'formSig': formSig
+                "_token": token,
             }
-            response2 = requests.post(url=url, data=payload, timeout=5)
-            soup = BeautifulSoup(response2.text, 'html.parser')
-            trs = soup.find_all('tr')
-            for tr in trs:
-                fields_dict = {'doctype': 'Vehicle Fine Record'}
-                soup_tr = BeautifulSoup(str(tr), 'html.parser')
-                tds = soup_tr.find_all('td')
-                if len(tds) > 1:
-                    i = 0
-                    for td in tds:
-                        soup_td = BeautifulSoup(str(td), 'html.parser')
-                        td = soup_td.find('td').getText()
-                        fields_dict[field_list[i]] = td
-                        i += 1
-                if len(tds) > 1:
-                    if frappe.db.exists("Vehicle Fine Record", fields_dict["reference"]):
-                        doc = frappe.get_doc(
-                            "Vehicle Fine Record", fields_dict["reference"])
-                        for key, value in fields_dict.items():
-                            if key != "qr_code":
-                                doc[key] = value
-                        doc.save()
-                    else:
-                        fine_doc = frappe.get_doc(fields_dict)
-                        fine_doc.insert()
+            if number_plate:
+                payload["option"] = "VEHICLE"
+                payload["searchable"] = number_plate
+            elif reference:
+                payload["option"] = "REFERENCE"
+                payload["searchable"] = reference
+            # send the payload to the server as a POST request as form data
+            response2 = session.post(url=url + "results", data=payload, timeout=5)
+            if response2.status_code == 200:
+                if response2.json:
+                    data = response2.json().get("dataFromTms")
+                    for key, value in data.items():
+                        if value.get(reference):
+                            fine_list.append(value["reference"])
+                            if frappe.db.exists(
+                                "Vehicle Fine Record", value["reference"]
+                            ):
+                                doc = frappe.get_doc(
+                                    "Vehicle Fine Record", value["reference"]
+                                )
+                                doc.update(value)
+                                doc.save()
+                            else:
+                                fine_doc = frappe.get_doc(
+                                    {"doctype": "Vehicle Fine Record", **value}
+                                )
+                                fine_doc.insert()
 
-        else:
-            # res = json.loads(response.text)
-            print_out(response)
-
-
-def update_fine(reference=None):
-    field_list = ["reference", "issued_date", "officer", "vehicle", "licence",
-                  "location", "offence", "charge", "penalty", "total", "status", "qr_code"]
-    formSig = "plcwb4um7FCh8BxsRRTBZ%2FXzw84N5SUnMv6ctKWPaiM%3D"
-    url = "https://tms.tpf.go.tz/"
-
-    try:
-        response = requests.post(url=url, timeout=5)
-    except Timeout:
-        frappe.msgprint(_("Error"))
-    else:
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.text, 'html.parser')
-            formSig = soup.find(attrs={"type": "hidden"})['value']
-            payload = {
-                'service': 'REFERENCE',
-                'vehicle': reference,
-                'formSig': formSig
-            }
-            response2 = requests.post(url=url, data=payload, timeout=5)
-            soup = BeautifulSoup(response2.text, 'html.parser')
-            trs = soup.find_all('tr')
-            for tr in trs:
-                fields_dict = {'doctype': 'Vehicle Fine Record'}
-                soup_tr = BeautifulSoup(str(tr), 'html.parser')
-                tds = soup_tr.find_all('td')
-                if len(tds) > 1:
-                    i = 0
-                    for td in tds:
-                        soup_td = BeautifulSoup(str(td), 'html.parser')
-                        td = soup_td.find('td').getText()
-                        fields_dict[field_list[i]] = td
-                        i += 1
-                if len(tds) > 1:
-                    if frappe.db.exists("Vehicle Fine Record", fields_dict["reference"]):
-                        doc = frappe.get_doc(
-                            "Vehicle Fine Record", fields_dict["reference"])
-                        doc.update(fields_dict)
-                        print(fields_dict)
-                        doc.save()
-                        frappe.db.commit()
+                    frappe.db.commit()
+            else:
+                print_out(
+                    response2,
+                    alert=True,
+                    add_traceback=True,
+                    to_error_log=True,
+                )
 
         else:
             print_out(response)
+    return fine_list

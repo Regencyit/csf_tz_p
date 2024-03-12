@@ -39,6 +39,12 @@ def get_columns(filters, prev_month, prev_year):
 			"width": 150
 		},
 		{
+			"fieldname": "payroll_cost_center",
+			"label": _("Cost Center"),
+			"fieldtype": "Data",
+			"width": 150
+		},
+		{
 			"fieldname": "salary_component",
 			"label": _("Salary Component"),
 			"fieldtype": "Data",
@@ -93,19 +99,20 @@ def get_data(filters, company_currency, prev_salary_slips):
 
 	records.append({
 		"department": "",
+		"payroll_cost_center": "",
 		"salary_component": "TOTAL EMPLOYEES",
 		"total_prev_month": len(prev_salary_slips),
 		"total_cur_month": len(salary_slips),
 		"difference_amount":  result
 	})
-	records.append({"department": "", "salary_component": "", "total_prev_month": "", "total_cur_month": "", "difference_amount": ""})
-	records.append({"department": "", "salary_component": "", "total_prev_month": "", "total_cur_month": "", "difference_amount": ""})
+	records.append({"department": "","payroll_cost_center": "", "salary_component": "", "total_prev_month": "", "total_cur_month": "", "difference_amount": ""})
+	records.append({"department": "","payroll_cost_center": "", "salary_component": "", "total_prev_month": "", "total_cur_month": "", "difference_amount": ""})
 
 	prev_ss_basic, prev_ss_earnings, prev_ss_deductions = get_salary_map(prev_salary_slips)
 
 	basic_data, total_prev_basic, total_cur_basic = get_basic_data(records, salary_slips, currency, company_currency, prev_ss_basic)
-	basic_data.append({"department": "", "salary_component": "", "total_prev_month": "", "total_cur_month": "", "difference_amount": ""})
-	basic_data.append({"department": "", "salary_component": "", "total_prev_month": "", "total_cur_month": "", "difference_amount": ""})
+	basic_data.append({"department": "","payroll_cost_center": "", "salary_component": "", "total_prev_month": "", "total_cur_month": "", "difference_amount": ""})
+	basic_data.append({"department": "","payroll_cost_center": "", "salary_component": "", "total_prev_month": "", "total_cur_month": "", "difference_amount": ""})
 
 	earnings_data, total_prev_earning, total_cur_earning = get_earnings_data(basic_data, salary_slips, currency, company_currency, prev_ss_earnings)
 
@@ -123,14 +130,15 @@ def get_data(filters, company_currency, prev_salary_slips):
 
 	earnings_data.append({
 		"department": "",
+		"payroll_cost_center": "",
 		"salary_component": "GROSS PAY",
 		"total_prev_month": prev_gross_pay,
 		"total_cur_month": cur_gross_pay,
 		"difference_amount": grs_diff
 	})
 
-	earnings_data.append({"department": "", "salary_component": "", "total_prev_month": "", "total_cur_month": "", "difference_amount": ""})
-	earnings_data.append({"department": "", "salary_component": "", "total_prev_month": "", "total_cur_month": "", "difference_amount": ""})
+	earnings_data.append({"department": "", "payroll_cost_center": "", "salary_component": "", "total_prev_month": "", "total_cur_month": "", "difference_amount": ""})
+	earnings_data.append({"department": "", "payroll_cost_center": "", "salary_component": "", "total_prev_month": "", "total_cur_month": "", "difference_amount": ""})
 
 	data = get_deduction_data(earnings_data, salary_slips, currency, company_currency, prev_ss_deductions, cur_gross_pay, prev_gross_pay)
 	
@@ -184,6 +192,7 @@ def get_basic_data(data, salary_slips, currency, company_currency, prev_ss_basic
 
 			data.append({
 				"department": cur_basic_row.get("department"),
+				"payroll_cost_center": cur_basic_row.get("payroll_cost_center"),
 				"salary_component": cur_basic_row.get("salary_component"),
 				"total_prev_month": 0,
 				"total_cur_month": cur_basic_row.get("total_cur_month"),
@@ -195,6 +204,7 @@ def get_basic_data(data, salary_slips, currency, company_currency, prev_ss_basic
 		if prev_row not in unique_prev_basic_salary_components:
 			data.append({
 				"department": row.get("department"),
+				"payroll_cost_center": row.get("payroll_cost_center"),
 				"salary_component": row.get("salary_component"),
 				"total_prev_month": row.get("total_prev_month") or 0,
 				"total_cur_month": 0,
@@ -212,6 +222,7 @@ def get_basic_data(data, salary_slips, currency, company_currency, prev_ss_basic
 
 	data.append({
 		"department": "",
+		"payroll_cost_center": "",
 		"salary_component": "Total Basic",
 		"total_prev_month": total_prev_basic,
 		"total_cur_month": total_cur_basic,
@@ -424,33 +435,33 @@ def get_prev_month_date(filters):
 
 def get_salary_map(prev_salary_slips):
 	prev_ss_basic = frappe.db.sql("""
-        SELECT ss.department, sd.salary_component, SUM(sd.amount) as total_prev_month 
+        SELECT ss.department, ss.payroll_cost_center, sd.salary_component, SUM(sd.amount) as total_prev_month 
         FROM `tabSalary Detail` sd, `tabSalary Slip` ss where sd.parent=ss.name 
         AND sd.parent in (%s)
         AND sd.do_not_include_in_total = 0
         AND sd.parentfield = 'earnings' 
         AND sd.salary_component = 'Basic'
-        GROUP BY ss.department, sd.salary_component 
+        GROUP BY ss.department, ss.payroll_cost_center, sd.salary_component 
         ORDER BY sd.salary_component ASC
 	""" % (', '.join(['%s']*len(prev_salary_slips))), tuple([d.name for d in prev_salary_slips]), as_dict=1)
 
 	prev_ss_earnings = frappe.db.sql("""
-        SELECT ss.department, sd.salary_component, SUM(sd.amount) as total_prev_month 
+        SELECT ss.department, ss.payroll_cost_center, sd.salary_component, SUM(sd.amount) as total_prev_month 
         FROM `tabSalary Detail` sd, `tabSalary Slip` ss where sd.parent=ss.name 
         AND sd.parent in (%s)
         AND sd.do_not_include_in_total = 0 
         AND sd.parentfield = 'earnings' 
         AND sd.salary_component != 'Basic'
-        GROUP BY ss.department, sd.salary_component 
+        GROUP BY ss.department, ss.payroll_cost_center, sd.salary_component 
         ORDER BY sd.salary_component ASC
 	""" % (', '.join(['%s']*len(prev_salary_slips))), tuple([d.name for d in prev_salary_slips]), as_dict=1)
 
 	prev_ss_deductions = frappe.db.sql("""
-        SELECT ss.department, sd.salary_component, SUM(sd.amount) as total_prev_month 
+        SELECT ss.department, ss.payroll_cost_center, sd.salary_component, SUM(sd.amount) as total_prev_month 
         FROM `tabSalary Detail` sd, `tabSalary Slip` ss where sd.parent=ss.name AND sd.parent in (%s)
         AND sd.do_not_include_in_total = 0 
         AND sd.parentfield = 'deductions' 
-        GROUP BY ss.department, sd.salary_component 
+        GROUP BY ss.department, ss.payroll_cost_center, sd.salary_component 
         ORDER BY sd.salary_component ASC
 	""" % (', '.join(['%s']*len(prev_salary_slips))), tuple([d.name for d in prev_salary_slips]), as_dict=1)
 	return prev_ss_basic, prev_ss_earnings, prev_ss_deductions
@@ -485,9 +496,13 @@ def get_prev_conditions(filters, company_currency):
     if filters.get("department") and filters.get("company"):
         department_list = get_departments(
             filters.get("department"), filters.get("company"))
-        conditions += 'and department in (' + ','.join(
+        conditions += ' and department in (' + ','.join(
             ("'"+n+"'" for n in department_list)) + ')'
-
+    if filters.get("cost_center") and filters.get("company"):
+        cost_center_list = get_cost_costs(
+            filters.get("cost_center"), filters.get("company"))
+        conditions += ' and payroll_cost_center in (' + ','.join(
+            ("'"+n+"'" for n in cost_center_list)) + ')'
     return conditions
 
 
@@ -503,13 +518,13 @@ def get_salary_slips(filters, company_currency):
 
 def get_ss_basic_map(salary_slips):
     ss_basic = frappe.db.sql("""
-        SELECT ss.department, sd.salary_component, SUM(sd.amount) as total_cur_month 
+        SELECT ss.department, ss.payroll_cost_center, sd.salary_component, SUM(sd.amount) as total_cur_month 
         FROM `tabSalary Detail` sd, `tabSalary Slip` ss where sd.parent=ss.name 
         AND sd.parent in (%s)
         AND sd.do_not_include_in_total = 0 
         AND sd.parentfield = 'earnings' 
         AND sd.salary_component = 'Basic'
-        GROUP BY ss.department, sd.salary_component 
+        GROUP BY ss.department, ss.payroll_cost_center, sd.salary_component 
         ORDER BY sd.salary_component ASC""" %
                              (', '.join(['%s']*len(salary_slips))), tuple([d.name for d in salary_slips]), as_dict=1)
 
@@ -518,13 +533,13 @@ def get_ss_basic_map(salary_slips):
 
 def get_ss_earning_map(salary_slips):
     ss_earnings = frappe.db.sql("""
-        SELECT ss.department, sd.salary_component, SUM(sd.amount) as total_cur_month 
+        SELECT ss.department, ss.payroll_cost_center, sd.salary_component, SUM(sd.amount) as total_cur_month 
         FROM `tabSalary Detail` sd, `tabSalary Slip` ss where sd.parent=ss.name 
         AND sd.parent in (%s)
         AND sd.do_not_include_in_total = 0 
         AND sd.parentfield = 'earnings' 
         AND sd.salary_component != 'Basic'
-        GROUP BY ss.department, sd.salary_component 
+        GROUP BY ss.department, ss.payroll_cost_center, sd.salary_component 
         ORDER BY sd.salary_component ASC""" %
                                 (', '.join(['%s']*len(salary_slips))), tuple([d.name for d in salary_slips]), as_dict=1)
 
@@ -533,12 +548,12 @@ def get_ss_earning_map(salary_slips):
 
 def get_ss_ded_map(salary_slips):
     ss_deductions = frappe.db.sql("""
-        SELECT ss.department, sd.salary_component, SUM(sd.amount) as total_cur_month 
+        SELECT ss.department, ss.payroll_cost_center, sd.salary_component, SUM(sd.amount) as total_cur_month 
         FROM `tabSalary Detail` sd, `tabSalary Slip` ss where sd.parent=ss.name AND sd.parent in (%s)
         AND sd.do_not_include_in_total = 0 
         AND sd.parentfield = 'deductions' 
         GROUP BY sd.salary_component 
-        ORDER BY ss.department, sd.salary_component ASC""" %
+        ORDER BY ss.department, ss.payroll_cost_center, sd.salary_component ASC""" %
                                   (', '.join(['%s']*len(salary_slips))), tuple([d.name for d in salary_slips]), as_dict=1)
     return ss_deductions
 
@@ -564,9 +579,13 @@ def get_conditions(filters, company_currency):
     if filters.get("department") and filters.get("company"):
         department_list = get_departments(
             filters.get("department"), filters.get("company"))
-        conditions += 'and department in (' + ','.join(
+        conditions += ' and department in (' + ','.join(
             ("'"+n+"'" for n in department_list)) + ')'
-
+    if filters.get("cost_center") and filters.get("company"):
+        cost_center_list = get_cost_costs(
+            filters.get("cost_center"), filters.get("company"))
+        conditions += ' and payroll_cost_center in (' + ','.join(
+            ("'"+n+"'" for n in cost_center_list)) + ')'
     return conditions, filters
 
 
@@ -574,3 +593,8 @@ def get_departments(department,company):
     departments_list = get_descendants_of("Department", department)
     departments_list.append(department)
     return departments_list
+
+def get_cost_costs(cost_center,company):
+    cost_center_list = get_descendants_of("Cost Center", cost_center)
+    cost_center_list.append(cost_center)
+    return cost_center_list

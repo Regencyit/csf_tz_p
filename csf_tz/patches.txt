@@ -1,3 +1,7 @@
+[pre_model_sync]
+
+[post_model_sync]
+
 csf_tz.patches.custom_fields.custom_fields_for_removed_edu_fields_in_csf_tz
 csf_tz.patches.remove_stock_entry_qty_field
 csf_tz.patches.remove_core_doctype_custom_docperm
@@ -7,3 +11,9 @@ csf_tz.patches.custom_fields.create_custom_fields_for_additional_salary
 csf_tz.patches.custom_fields.auth_otp_custom_fields
 csf_tz.patches.custom_fields.payroll_approval_custom_fields
 csf_tz.patches.custom_fields.attendance_overtime_calculation_custom_fields
+csf_tz.patches.add_custom_fields_for_employee_advance
+csf_tz.patches.add_custom_for_employee_doctype
+csf_tz.patches.add_custom_field_for_cusomer_suppliers_groups
+csf_tz.patches.fix_module_for_core_reports
+csf_tz.patches.create_the_stock_entry_type
+csf_tz.patches.custom_fields.add_fields_in_stock_entry

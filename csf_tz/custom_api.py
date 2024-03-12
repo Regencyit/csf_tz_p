@@ -839,8 +839,8 @@ def validate_item_remaining_qty(
         return
     if frappe.db.get_single_value("Stock Settings", "allow_negative_stock"):
         return
-    item = frappe.get_doc("Item", item_code)
-    if item.is_stock_item == 1 and item.has_batch_no == 0:
+    is_stock_item = frappe.get_value("Item", item_code, "is_stock_item")
+    if is_stock_item == 1:
         item_balance = get_item_balance(item_code, company, warehouse) or 0
         if not item_balance:
             frappe.throw(
@@ -1486,6 +1486,75 @@ def set_fee_abbr(doc=None, method=None):
         return
     doc.abbr = frappe.get_value("Company", doc.company, "abbr")
 
+
+@frappe.whitelist()
+def enroll_all_students(self):
+    """Enrolls students or applicants.
+
+    :param self: Program Enrollment Tool
+
+    This is created to allow enqueue of students creation.
+    The default enroll process fails when there are too many enrollments to do at a go
+    """
+    import json
+
+    self = json.loads(self)
+    self = frappe.get_doc(dict(self))
+
+    if self.get_students_from == "Student Applicant":
+        frappe.msgprint("Remove student applicants that are already created")
+
+    if len(self.students) > 30:
+        frappe.enqueue("csf_tz.custom_api.enroll_students", self=self)
+        return "queued"
+    else:
+        enroll_students(self=self)
+        return len(self.students)
+
+
+@frappe.whitelist()
+def enroll_students(self):
+    """Enrolls students or applicants.
+
+    :param self: Program Enrollment Tool
+
+    This is a copy of ERPNext function meant to allow loading from custom doctypes and frappe.enqueue
+    Used in csf_tz.custom_api.enroll_students
+    """
+    from erpnext.education.api import enroll_student
+
+    total = len(self.students)
+    for i, stud in enumerate(self.students):
+        frappe.publish_realtime(
+            "program_enrollment_tool",
+            dict(progress=[i + 1, total]),
+            user=frappe.session.user,
+        )
+        if stud.student:
+            prog_enrollment = frappe.new_doc("Program Enrollment")
+            prog_enrollment.student = stud.student
+            prog_enrollment.student_name = stud.student_name
+            prog_enrollment.program = self.new_program
+            prog_enrollment.academic_year = self.new_academic_year
+            prog_enrollment.academic_term = self.new_academic_term
+            prog_enrollment.student_batch_name = (
+                stud.student_batch_name
+                if stud.student_batch_name
+                else self.new_student_batch
+            )
+            prog_enrollment.save()
+        elif stud.student_applicant:
+            prog_enrollment = enroll_student(stud.student_applicant)
+            prog_enrollment.academic_year = self.academic_year
+            prog_enrollment.academic_term = self.academic_term
+            prog_enrollment.student_batch_name = (
+                stud.student_batch_name
+                if stud.student_batch_name
+                else self.new_student_batch
+            )
+            prog_enrollment.save()
+
+
 @frappe.whitelist()
 def get_tax_category(doc_type, company):
     fetch_default_tax_category = (
@@ -1700,19 +1769,19 @@ def batch_splitting(doc, method):
     this works only if is_return = 0, update_stock = 1 and allow batch splitting is ticked on CSF TZ Settings
     """
     if doc.is_return == 1:
-        return 
+        return
 
     if doc.update_stock == 0:
         return
-       
+
     if not frappe.db.get_single_value('CSF TZ Settings', "allow_batch_splitting"):
         return
 
     if not doc.set_warehouse and doc.pos_profile:
         doc.set_warehouse = frappe.db.get_value("POS Profile", doc.pos_profile, "warehouse")
-        
+
     if not doc.set_warehouse:
-        frappe.throw(_("<h4>Please set source warehouse first</h4>"))   
+        frappe.throw(_("<h4>Please set source warehouse first</h4>"))
         
     warehouse = doc.set_warehouse
 
@@ -2037,19 +2106,86 @@ def update_row_item(row, batch_obj, quantity, fields_to_clear, conversion_factor
     })
 
     return new_row
- 
+  
 def validate_grand_total(doc, method):
     """Validate grand total of sales invoice if 'validate_grand_total_vs_payment_amount_on_sales_invoice' is checked in CSF TZ Settings"""
     if not frappe.db.get_single_value('CSF TZ Settings', "validate_grand_total_vs_payment_amount_on_sales_invoice"):
         return
-
+    
     if len(doc.items) > 0:
         total_amount = doc.rounded_total or doc.grand_total
 
         payment_amount = sum([payment.amount for payment in doc.payments])
-
+    
         if payment_amount and total_amount != payment_amount:
             frappe.throw(_(f"<h4 class='text-center' style='background-color: #D3D3D3; font-weight: bold; font-size: 14px'>\
                 Total Amount for all Items: <strong>{total_amount}</strong> must be equal to Paid Amount: <strong>{payment_amount}</strong>,<br>\
                 Please check before submitting this invoice </h4>")
             )
+
+@frappe.whitelist()
+def account_exists(account_name):
+    return frappe.db.exists("Account", {"account_name": account_name})
+
+@frappe.whitelist()
+def auto_create_account():
+    abbr = frappe.get_value('Company', frappe.defaults.get_user_default("company"), 'abbr')
+    account_data = [
+        {"account_name": "OUTPUT VAT - 18% ", "account_type": "Tax", "parent_account": f"Duties and Taxes - {abbr}"},
+        {"account_name": "INPUT VAT - 18%  ", "account_type": "Tax", "parent_account": f"Tax Assets - {abbr}"},
+        {"account_name": "VAT Payable Account ", "account_type": "Tax", "parent_account": f"Duties and Taxes - {abbr}"},
+        {"account_name": "Basic Salary - Expense", "account_type": "Expense Account", "parent_account": f"Direct Expenses - {abbr}"},
+        {"account_name": "Allowance - Expense", "account_type": "Expense Account", "parent_account": f"Direct Expenses - {abbr}"},
+        {"account_name": "Deductions - Expenses", "account_type": "Expense Account", "parent_account": f"Direct Expenses - {abbr}"},
+        {"account_name": "Taxes - Expenses", "account_type": "Expense Account", "parent_account": f"Direct Expenses - {abbr}"},        
+    ]
+
+    for account_info in account_data:
+        account_name = account_info.get("account_name")
+
+        if not account_exists(account_name):
+            account_doc = frappe.new_doc("Account")
+            account_doc.account_name = account_name
+            account_doc.account_type = account_info.get("account_type")
+            account_doc.parent_account = account_info.get("parent_account")
+            account_doc.insert(ignore_permissions=True)
+        else:   
+            frappe.throw(f"Account '{account_name}' already exists.")
+    return "Account added successfully."
+
+@frappe.whitelist()
+def create_tax_template():
+    abbr = frappe.get_value('Company', frappe.defaults.get_user_default("company"), 'abbr')
+    item_tax_template_list = [
+        {"title": "Tanzania Exempted Sales", "tax_type": f"OUTPUT VAT - 18% - {abbr}"},
+        {"title": "Tanzania Exempted Purchases ", "tax_type": f"INPUT VAT - 18% - {abbr}"},
+        {"title": "Tanzania VAT 18%", "tax_type": f"OUTPUT VAT - 18% - {abbr}"},
+        {"title": "Tanzania Purchase VAT 18% ", "tax_type": f"INPUT VAT - 18% - {abbr}"},
+        {"title": "Zanzibar VAT Exempted", "tax_type": f"VAT Payable Account - {abbr}"},
+        {"title": "Zanzibar VAT Tax 0%", "tax_type": f"VAT Payable Account - {abbr}"},
+    ]
+
+    for item_tax_template_info in item_tax_template_list:
+        item_tax_template_doc = frappe.new_doc('Item Tax Template')
+        item_tax_template_doc.title = item_tax_template_info.get('title')
+        item_tax_template_doc.append("taxes", {
+            "tax_type": item_tax_template_info.get('tax_type'),
+            "tax_rate": ""
+        })
+        item_tax_template_doc.insert()
+
+    return "Tax Template added successfully."
+
+
+@frappe.whitelist()
+def create_tax_category():
+    tax_category_list = ['Sales', 'Non Taxable', 'Purchase']
+
+    for tax_category_name in tax_category_list:
+        tax_category_doc = frappe.new_doc('Tax Category')
+        tax_category_doc.name = tax_category_name
+        tax_category_doc.title = tax_category_name
+        tax_category_doc.insert(ignore_permissions=True)
+        tax_category_doc.save()
+            
+    return "Tax Template added to Supplier Groups successfully." 

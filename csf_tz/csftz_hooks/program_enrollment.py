@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 import frappe
 from frappe import _
-from erpnext.education.doctype.program_enrollment.program_enrollment import ProgramEnrollment
+from education.education.doctype.program_enrollment.program_enrollment import ProgramEnrollment
 # from csf_tz import console
 
 
@@ -23,12 +23,12 @@ def get_fee_schedule(program, academic_year, academic_term=None, student_categor
     """Returns Fee Schedule.
 
     :param program: Program.
-    :param student_category: Student Category
+    :param student_category: Student Category   
     :param academic_year
     :param academic_term
     """
     fs = frappe.get_list("Program Fee", fields=["academic_term", "fee_structure", "due_date", "amount"],
-                         filters={"parent": program, "student_category": student_category}, order_by="idx")
+                         filters={"parent": program, "student_category": student_category}, parent_doctype="Program Enrollment", order_by="idx")
 
     fees_list = []
     for i in fs:

@@ -218,6 +218,9 @@ doc_events = {
     "Attendance": {
         "validate": "csf_tz.csftz_hooks.attendance.process_overtime",
     },
+    "Employee Checkin": {
+        "validate": "csf_tz.csftz_hooks.employee_checkin.validate",
+    },
 }
 
 # Scheduled Tasks

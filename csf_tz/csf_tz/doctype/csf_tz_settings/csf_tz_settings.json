@@ -28,7 +28,9 @@
   "enable_fixed_working_days_per_month",
   "working_days_per_month",
   "hr_settings_section",
-  "enable_overtime_calculation"
+  "enable_overtime_calculation",
+  "column_break_ihhi5",
+  "override_fetch_shift_details"
  ],
  "fields": [
   {
@@ -167,12 +169,23 @@
    "fieldname": "enable_overtime_calculation",
    "fieldtype": "Check",
    "label": "Enable Overtime Calculation"
+  },
+  {
+   "fieldname": "column_break_ihhi5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "description": "If ticked, Shift Details will be fetched using custom methods on Employee Checkin",
+   "fieldname": "override_fetch_shift_details",
+   "fieldtype": "Check",
+   "label": "Override Fetch Shift Details"
   }
  ],
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2023-08-11 11:31:05.050641",
+ "modified": "2023-09-18 16:05:54.609687",
  "modified_by": "Administrator",
  "module": "CSF TZ",
  "name": "CSF TZ Settings",
